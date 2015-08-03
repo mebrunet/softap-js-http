@@ -1,6 +1,6 @@
 {
 	"host": "192.168.0.1",
-	"port": "5609",
+	"port": "80",
 	"keep_alive": true,
 	"timeout": 2000,
 	"no_delay": true,

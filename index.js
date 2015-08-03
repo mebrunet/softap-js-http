@@ -1,9 +1,11 @@
 module.exports = SoftAPSetup;
 
-var net = require('net');
-var util = require('util');
+//var net = require('net');
+//var util = require('util');
 var config = require('./config');
 var rsa = require('node-rsa');
+var http = require('http');
+var querystring = require('querystring');
 
 var securityTable = {
 	"open": 0,
@@ -47,25 +49,23 @@ function SoftAPSetup(opts) {
 SoftAPSetup.prototype.scan = function scan(cb) {
 
 	is(cb);
-	var sock = this.__sendCommand('scan-ap', cb);
-	return sock;
+	this.__sendCommand('scan-ap', cb);
 };
 
 SoftAPSetup.prototype.connect = function connect(cb) {
 
 	is(cb);
-	var sock = this.__sendCommand('connect-ap', cb);
-	return sock;
+	this.__sendCommand({name : 'connect-ap', body: {idx : 0}}, cb);
+	//this.__sendCommand('connect-ap', cb);
 };
 
 SoftAPSetup.prototype.deviceInfo = function deviceInfo(cb) {
 
 	is(cb);
-	var sock = this.__sendCommand('device-id', response.bind(this));
+	this.__sendCommand('device-id', response.bind(this));
+	
 	function response(err, dat) {
-
 		if(err) { return cb(err); }
-
 		var claimed = dat.c === '1' ? true : false;
 		this.__deviceID = dat.id;
 
@@ -74,15 +74,14 @@ SoftAPSetup.prototype.deviceInfo = function deviceInfo(cb) {
 			claimed : claimed
 		});
 	};
-	return sock;
 };
 
 SoftAPSetup.prototype.publicKey = function publicKey(cb) {
 
 	is(cb);
-	var sock = this.__sendCommand('public-key', response.bind(this));
+	this.__sendCommand('public-key', response.bind(this));
+	
 	function response(err, dat) {
-
 		if(err) { return cb(err); }
 		if(!dat) { return cb(new Error('No data received')); }
 		if(dat.r !== 0) {
@@ -94,7 +93,6 @@ SoftAPSetup.prototype.publicKey = function publicKey(cb) {
 		})
 		cb(null, this.__publicKey.exportKey('pkcs8-public'));
 	};
-	return sock;
 };
 
 SoftAPSetup.prototype.setClaimCode = function(code, cb) {
@@ -107,10 +105,11 @@ SoftAPSetup.prototype.setClaimCode = function(code, cb) {
 		k: "cc"
 		, v: code
 	};
-	var sock = this.__sendCommand({ name: 'set', body: claim }, cb);
+	
+	this.__sendCommand({ name: 'set', body: claim }, cb);
 
-	return sock;
 };
+
 
 SoftAPSetup.prototype.configure = function configure(opts, cb) {
 
@@ -130,7 +129,6 @@ SoftAPSetup.prototype.configure = function configure(opts, cb) {
 		}
 		opts.ssid = opts.name;
 	}
-
 	if((opts.enc || opts.sec) && !opts.security) {
 		opts.security = opts.sec || opts.enc;
 	}
@@ -160,11 +158,92 @@ SoftAPSetup.prototype.configure = function configure(opts, cb) {
 
 	if(securePass) { apConfig.pwd = securePass; }
 
-	var sock = this.__sendCommand({ name: 'configure-ap', body: apConfig }, cb);
+	this.__sendCommand({ name: 'configure-ap', body: apConfig }, cb);
 
-	return sock;
 };
 
+
+SoftAPSetup.prototype.__sendCommand = function(cmd, cb) {
+
+	if(typeof cmd == 'string') {
+		cmd = { name : cmd, body : undefined, method : 'get' };
+	}
+	else if (typeof cmd == 'object') {
+		if(!cmd.name) { throw new Error('Command object has no name property'); }
+		cmd.method = 'post'; // Post if has contents
+	}
+	else { throw new Error('Invalid command'); }
+	
+	is(cb);
+
+	// Make the request
+	var options = {
+		host : this.host,
+		port : this.port,
+		method : cmd.method,
+		path : '/' + cmd.name,
+	}
+
+	var req = http.request(options, function(res){
+		// Debug
+		console.log('STATUS: ' + res.statusCode);
+		console.log('HEADERS: ' + JSON.stringify(res.headers));
+		
+		res.setEncoding('utf8');
+		var body = '';
+		res.on('data', function (chunk) {
+		  body += chunk;
+		});
+		
+		res.on('end', function(){
+			// Concat response
+			var json;
+			try {
+				json = JSON.parse(body);
+			} 
+			catch(err){
+				console.log('JSON parsing issue');
+				return cb(err);
+			}
+
+			// Fire the callback
+			console.log('BODY:');
+			console.log(body)
+			cb(null, json);
+
+		});
+	});
+
+	// error handling
+	req.on('error', function(err) {
+	  console.log('problem with request');
+	  return cb(err);
+	});
+
+	// If post request
+	if (cmd.body) {
+		postData = JSON.stringify(cmd.body);
+		console.log('post data:');
+		console.log(postData);
+		console.log(Buffer.byteLength(postData));
+
+		// Same headers as those sent in softap.py
+		req.setHeader('Accept-Encoding', 'identity');
+		req.setHeader('Content-Length', Buffer.byteLength(postData));
+		req.write(postData);
+	}
+
+	// Debug
+	//console.log(cmd);
+
+	// Send
+	req.end();
+
+};
+
+
+
+/*
 SoftAPSetup.prototype.__getSocket = function __getSocket(connect, data, error) {
 
 	var errorMessage = undefined;
@@ -232,6 +311,7 @@ SoftAPSetup.prototype.__sendCommand = function(cmd, cb) {
 
 	return sock;
 };
+*/
 
 SoftAPSetup.prototype.version = function(cb) {
 

@@ -13,6 +13,9 @@ if(!config.get('ssid')) {
 
 console.log("Obtaining device information...");
 
+//sap.deviceInfo(key);
+
+
 sap.deviceInfo(claim);
 
 function claim(err, dat) {
@@ -21,6 +24,7 @@ function claim(err, dat) {
 	console.log("-------");
 	console.log("Obtained device information. Setting claim code...");
 	sap.setClaimCode("wat", key);
+
 }
 
 function key(err, dat) {
