@@ -2,12 +2,12 @@
 Spark SoftAP Setup for JavaScript
 
 ## NOTES about HTTP
-Branch "HTTP" tweaked this package by Emily Rose to use the HTTP API now available on the Photon. (Firmaware branch photon_043).
+Branch "HTTP" tweaked this package by Emily Rose to use the HTTP API now available on the Photon. (Firmware branch photon_043).
 
 The example "basic-setup.js" will connect my Photon to the WiFi... however it is broken in the two following ways:
 
-1. The Photon does not respond to the connect-ap request. It simply begins going through the connection process, and let's the request time out.
-2. The LED goes red and blinks a few times after receiving the connect-ap command. The Photon then restarts and goes through it's usual connection process.
+1. The Photon does not respond to the connect-ap request. It simply begins going through the connection process, and lets the request time out.
+2. The LED turns RED and blinks a few times after receiving the connect-ap command. The Photon then restarts and goes through it's usual connection process.
 
 Any help with the code would be appreciated. (Note I'd like restrict package use to those that can be run from the Browser using Browserify and/or Webpack).
 
